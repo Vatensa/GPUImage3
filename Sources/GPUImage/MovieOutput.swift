@@ -34,6 +34,8 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
             assetWriterVideoInput.transform = newValue
         }
     }
+    
+    private var outputTexture: Texture? = nil
 
     public init(
         URL: Foundation.URL, size: Size, fileType: AVFileType = AVFileType.mov,
@@ -159,41 +161,31 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
             pixelBuffer, CVPixelBufferLockFlags(rawValue: CVOptionFlags(0)))
     }
 
-    func renderIntoPixelBuffer(_ pixelBuffer: CVPixelBuffer, texture: Texture) {
+    func renderIntoPixelBuffer(_ pixelBuffer:CVPixelBuffer, texture:Texture) {
         guard let pixelBufferBytes = CVPixelBufferGetBaseAddress(pixelBuffer) else {
             print("Could not get buffer bytes")
             return
         }
 
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
-
-        let outputTexture: Texture
-        if (Int(round(self.size.width)) != texture.texture.width)
-            && (Int(round(self.size.height)) != texture.texture.height)
-        {
-            let commandBuffer = sharedMetalRenderingDevice.commandQueue.makeCommandBuffer()
-
-            outputTexture = Texture(
-                device: sharedMetalRenderingDevice.device, orientation: .portrait,
-                width: Int(round(self.size.width)), height: Int(round(self.size.height)),
-                timingStyle: texture.timingStyle)
-
-            commandBuffer?.renderQuad(
-                pipelineState: renderPipelineState, inputTextures: [0: texture],
-                outputTexture: outputTexture)
-            commandBuffer?.commit()
-            commandBuffer?.waitUntilCompleted()
-        } else {
-            outputTexture = texture
+        if (Int(round(self.size.width)) != outputTexture?.texture.width) && (Int(round(self.size.height)) != outputTexture?.texture.height) {
+            outputTexture = Texture(device:sharedMetalRenderingDevice.device,
+                                    orientation: .portrait,
+                                    width: Int(round(self.size.width)),
+                                    height: Int(round(self.size.height)),
+                                    timingStyle: texture.timingStyle)
         }
-
-        let region = MTLRegionMake2D(
-            0, 0, outputTexture.texture.width, outputTexture.texture.height)
-
-        outputTexture.texture.getBytes(
-            pixelBufferBytes, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
+        
+        let commandBuffer = sharedMetalRenderingDevice.commandQueue.makeCommandBuffer()
+        commandBuffer?.renderQuad(pipelineState: renderPipelineState, inputTextures: [0:texture], outputTexture: outputTexture!)
+        commandBuffer?.commit()
+        commandBuffer?.waitUntilCompleted()
+        
+        let region = MTLRegionMake2D(0, 0, outputTexture!.texture.width, outputTexture!.texture.height)
+        
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
+        outputTexture!.texture.getBytes(pixelBufferBytes, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
     }
-
+    
     // MARK: -
     // MARK: Audio support
 
