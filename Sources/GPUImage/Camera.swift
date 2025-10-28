@@ -45,7 +45,7 @@ public struct CameraError: Error {
 
 let initialBenchmarkFramesToIgnore = 5
 
-public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBufferDelegate {
+public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
 
     public var location: PhysicalCameraLocation {
         didSet {
@@ -64,6 +64,25 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     let videoOutput: AVCaptureVideoDataOutput!
     var videoTextureCache: CVMetalTextureCache?
 
+    var microphone:AVCaptureDevice?
+    var audioInput:AVCaptureDeviceInput?
+    var audioOutput:AVCaptureAudioDataOutput?
+    
+    public var audioEncodingTarget:AudioEncodingTarget? {
+        didSet {
+            guard let audioEncodingTarget = audioEncodingTarget else {
+                self.removeAudioInputsAndOutputs()
+                return
+            }
+            do {
+                try self.addAudioInputsAndOutputs()
+                audioEncodingTarget.activateAudioTrack()
+            } catch {
+                fatalError("ERROR: Could not connect audio target with error: \(error)")
+            }
+        }
+    }
+
     var supportsFullYUVRange: Bool = false
     let captureAsYUV: Bool
     let yuvConversionRenderPipelineState: MTLRenderPipelineState?
@@ -76,6 +95,10 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
         label: "com.sunsetlakesoftware.GPUImage.cameraFrameProcessingQueue",
         attributes: [])
 
+    let audioProcessingQueue:DispatchQueue = DispatchQueue(
+        label: "com.sunsetlakesoftware.GPUImage.audioProcessingQueue",
+        attributes: [])
+    
     let framesToIgnore = 5
     var numberOfFramesCaptured = 0
     var totalFrameTimeDuringCapture: Double = 0.0
@@ -200,7 +223,11 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
         _ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-
+        guard (output != audioOutput) else {
+            self.processAudioSampleBuffer(sampleBuffer)
+            return
+        }
+        
         guard
             frameRenderingSemaphore.wait(timeout: DispatchTime.now())
                 == DispatchTimeoutResult.success
@@ -347,5 +374,48 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
 
     public func transmitPreviousImage(to target: ImageConsumer, atIndex: UInt) {
         // Not needed for camera
+    }
+    
+    // MARK: -
+    // MARK: Audio processing
+    
+    func addAudioInputsAndOutputs() throws {
+        guard (self.audioOutput == nil) else { return }
+        
+        captureSession.beginConfiguration()
+        defer {
+            captureSession.commitConfiguration()
+        }
+        guard let microphone = AVCaptureDevice.default(for: .audio) else {
+            return
+        }
+        let audioInput = try AVCaptureDeviceInput(device:microphone)
+        if captureSession.canAddInput(audioInput) {
+           captureSession.addInput(audioInput)
+        }
+        let audioOutput = AVCaptureAudioDataOutput()
+        if captureSession.canAddOutput(audioOutput) {
+            captureSession.addOutput(audioOutput)
+        }
+        self.microphone = microphone
+        self.audioInput = audioInput
+        self.audioOutput = audioOutput
+        audioOutput.setSampleBufferDelegate(self, queue:audioProcessingQueue)
+    }
+    
+    func removeAudioInputsAndOutputs() {
+        guard (audioOutput != nil) else { return }
+        
+        captureSession.beginConfiguration()
+        captureSession.removeInput(audioInput!)
+        captureSession.removeOutput(audioOutput!)
+        audioInput = nil
+        audioOutput = nil
+        microphone = nil
+        captureSession.commitConfiguration()
+    }
+    
+    func processAudioSampleBuffer(_ sampleBuffer:CMSampleBuffer) {
+        self.audioEncodingTarget?.processAudioBuffer(sampleBuffer)
     }
 }

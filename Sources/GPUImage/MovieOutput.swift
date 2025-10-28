@@ -198,17 +198,8 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
     }
 
     public func processAudioBuffer(_ sampleBuffer: CMSampleBuffer) {
+        guard let startTime else { return } // wait until video starts the session
         guard let assetWriterAudioInput = assetWriterAudioInput else { return }
-
-        let currentSampleTime = CMSampleBufferGetOutputPresentationTimeStamp(sampleBuffer)
-        if self.startTime == nil {
-            if self.assetWriter.status != .writing {
-                self.assetWriter.startWriting()
-            }
-
-            self.assetWriter.startSession(atSourceTime: currentSampleTime)
-            self.startTime = currentSampleTime
-        }
 
         guard assetWriterAudioInput.isReadyForMoreMediaData || (!self.encodingLiveVideo) else {
             return
