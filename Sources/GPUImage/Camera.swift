@@ -88,6 +88,7 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     let yuvConversionRenderPipelineState: MTLRenderPipelineState?
     var yuvLookupTable: [String: (Int, MTLStructMember)] = [:]
     var yuvBufferSize: Int = 0
+    var conversionTexture:Texture? = nil
 
     let frameRenderingSemaphore = DispatchSemaphore(value: 1)
     let cameraProcessingQueue = DispatchQueue.global()
@@ -287,11 +288,16 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
                         outputWidth = bufferWidth
                         outputHeight = bufferHeight
                     }
-                    let outputTexture = Texture(
-                        device: sharedMetalRenderingDevice.device, orientation: .portrait,
-                        width: outputWidth, height: outputHeight,
-                        timingStyle: .videoFrame(timestamp: Timestamp(currentTime)))
-
+                    
+                    if self.conversionTexture?.texture.width != outputWidth || self.conversionTexture?.texture.height != outputHeight {
+                        self.conversionTexture = Texture(
+                            device: sharedMetalRenderingDevice.device, orientation: .portrait,
+                            width: outputWidth, height: outputHeight,
+                            timingStyle: .videoFrame(timestamp: Timestamp(currentTime)))
+                    }
+                    
+                    self.conversionTexture?.timingStyle = .videoFrame(timestamp: Timestamp(currentTime))
+                    
                     convertYUVToRGB(
                         pipelineState: self.yuvConversionRenderPipelineState!,
                         lookupTable: self.yuvLookupTable, bufferSize: self.yuvBufferSize,
@@ -301,8 +307,8 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
                         chrominanceTexture: Texture(
                             orientation: self.orientation ?? self.location.imageOrientation(),
                             texture: chrominanceTexture),
-                        resultTexture: outputTexture, colorConversionMatrix: conversionMatrix)
-                    texture = outputTexture
+                        resultTexture: self.conversionTexture!, colorConversionMatrix: conversionMatrix)
+                    texture = self.conversionTexture!
                 } else {
                     texture = nil
                 }
