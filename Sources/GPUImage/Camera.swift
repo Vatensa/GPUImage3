@@ -93,10 +93,12 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     let cameraProcessingQueue = DispatchQueue.global()
     let cameraFrameProcessingQueue = DispatchQueue(
         label: "com.sunsetlakesoftware.GPUImage.cameraFrameProcessingQueue",
+        qos: .userInteractive,
         attributes: [])
 
     let audioProcessingQueue:DispatchQueue = DispatchQueue(
         label: "com.sunsetlakesoftware.GPUImage.audioProcessingQueue",
+        qos: .userInteractive,
         attributes: [])
     
     let framesToIgnore = 5
