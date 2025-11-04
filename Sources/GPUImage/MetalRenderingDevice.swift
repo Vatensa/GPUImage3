@@ -10,7 +10,7 @@ public class MetalRenderingDevice {
 
     public let device: MTLDevice
     public let commandQueue: MTLCommandQueue
-    public let shaderLibrary: MTLLibrary
+    public private(set) var shaderLibraries:[MTLLibrary] = []
     public let metalPerformanceShadersAreSupported: Bool
 
     lazy var passthroughRenderState: MTLRenderPipelineState = {
@@ -48,6 +48,14 @@ public class MetalRenderingDevice {
             fatalError("Could not load library")
         }
 
-        self.shaderLibrary = defaultLibrary
+        self.shaderLibraries.append(defaultLibrary)
+    }
+    
+    public func registerShaderLibrary(lib: MTLLibrary) {
+        if shaderLibraries.contains { l in l.isEqual(lib) } {
+             return
+        }
+        
+        shaderLibraries.append(lib)
     }
 }
