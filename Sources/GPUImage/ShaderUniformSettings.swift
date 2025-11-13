@@ -174,6 +174,89 @@ public class ShaderUniformSettings {
         }
     }
 
+    public subscript(key: String) -> [Float] {
+        get {
+            guard let index = uniformLookupTable[key] else {
+                fatalError(
+                    "Tried to access value of missing uniform: \(key), make sure this is present and used in your shader."
+                )
+            }
+
+            // TODO: fix
+            return [Float]()
+        }
+        set(newValue) {
+            shaderUniformSettingsQueue.async {
+                guard let index = self.uniformLookupTable[key] else {
+                    fatalError(
+                        "Tried to access value of missing uniform: \(key), make sure this is present and used in your shader."
+                    )
+                }
+                let startIndex = self.internalIndex(for: index)
+                
+                for i in 0..<newValue.count {
+                    self.uniformValues[startIndex + i] = newValue[i]
+                }
+            }
+        }
+    }
+    
+    public subscript(key: String) -> [Position] {
+        get {
+            guard let index = uniformLookupTable[key] else {
+                fatalError(
+                    "Tried to access value of missing uniform: \(key), make sure this is present and used in your shader."
+                )
+            }
+
+            // TODO: fix
+            return [Position]()
+        }
+        set(newValue) {
+            shaderUniformSettingsQueue.async {
+                guard let index = self.uniformLookupTable[key] else {
+                    fatalError(
+                        "Tried to access value of missing uniform: \(key), make sure this is present and used in your shader."
+                    )
+                }
+                let startIndex = self.internalIndex(for: index)
+                
+                for i in 0..<newValue.count {
+                    self.uniformValues[startIndex + 2 * i] = newValue[i].x
+                    self.uniformValues[startIndex + 2 * i + 1] = newValue[i].y
+                }
+            }
+        }
+    }
+    
+    public subscript(key: String) -> [Size] {
+        get {
+            guard let index = uniformLookupTable[key] else {
+                fatalError(
+                    "Tried to access value of missing uniform: \(key), make sure this is present and used in your shader."
+                )
+            }
+
+            // TODO: fix
+            return [Size]()
+        }
+        set(newValue) {
+            shaderUniformSettingsQueue.async {
+                guard let index = self.uniformLookupTable[key] else {
+                    fatalError(
+                        "Tried to access value of missing uniform: \(key), make sure this is present and used in your shader."
+                    )
+                }
+                let startIndex = self.internalIndex(for: index)
+                
+                for i in 0..<newValue.count {
+                    self.uniformValues[startIndex + 2 * i] = newValue[i].width
+                    self.uniformValues[startIndex + 2 * i + 1] = newValue[i].height
+                }
+            }
+        }
+    }
+    
     // MARK: -
     // MARK: Uniform buffer memory management
 
