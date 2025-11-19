@@ -91,7 +91,12 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     var conversionTexture:Texture? = nil
 
     let frameRenderingSemaphore = DispatchSemaphore(value: 1)
-    let cameraProcessingQueue = DispatchQueue.global()
+    //let cameraProcessingQueue = DispatchQueue.global()
+    let cameraProcessingQueue = DispatchQueue(
+        label: "com.sunsetlakesoftware.GPUImage.cameraProcessingQueue",
+        qos: .userInteractive,
+        attributes: [])
+    
     let cameraFrameProcessingQueue = DispatchQueue(
         label: "com.sunsetlakesoftware.GPUImage.cameraFrameProcessingQueue",
         qos: .userInteractive,
