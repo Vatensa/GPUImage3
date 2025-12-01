@@ -256,6 +256,8 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
             CVPixelBufferUnlockBaseAddress(
                 cameraFrame, CVPixelBufferLockFlags(rawValue: CVOptionFlags(0)))
 
+            let orientation = self.orientation ?? self.location.imageOrientation()
+            
             let texture: Texture?
             if self.captureAsYUV {
                 var luminanceTextureRef: CVMetalTexture? = nil
@@ -284,19 +286,18 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
 
                     let outputWidth: Int
                     let outputHeight: Int
-                    if (self.orientation ?? self.location.imageOrientation()).rotationNeeded(
-                        for: .portrait
-                    ).flipsDimensions() {
+                    
+                    if self.location.imageOrientation().rotationNeeded(for: orientation).flipsDimensions() {
                         outputWidth = bufferHeight
                         outputHeight = bufferWidth
                     } else {
                         outputWidth = bufferWidth
                         outputHeight = bufferHeight
                     }
-                    
+
                     if self.conversionTexture?.texture.width != outputWidth || self.conversionTexture?.texture.height != outputHeight {
                         self.conversionTexture = Texture(
-                            device: sharedMetalRenderingDevice.device, orientation: .portrait,
+                            device: sharedMetalRenderingDevice.device, orientation: orientation,
                             width: outputWidth, height: outputHeight,
                             timingStyle: .videoFrame(timestamp: Timestamp(currentTime)))
                     }
@@ -307,10 +308,10 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
                         pipelineState: self.yuvConversionRenderPipelineState!,
                         lookupTable: self.yuvLookupTable, bufferSize: self.yuvBufferSize,
                         luminanceTexture: Texture(
-                            orientation: self.orientation ?? self.location.imageOrientation(),
+                            orientation: self.location.imageOrientation(),
                             texture: luminanceTexture),
                         chrominanceTexture: Texture(
-                            orientation: self.orientation ?? self.location.imageOrientation(),
+                            orientation: self.location.imageOrientation(),
                             texture: chrominanceTexture),
                         resultTexture: self.conversionTexture!, colorConversionMatrix: conversionMatrix)
                     texture = self.conversionTexture!
