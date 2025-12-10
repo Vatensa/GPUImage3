@@ -59,27 +59,35 @@ open class BasicOperation: ImageProcessingOperation {
 
     public func newTextureAvailable(_ texture: Texture, fromSourceIndex: UInt) {
         let _ = textureInputSemaphore.wait(timeout: DispatchTime.distantFuture)
-        defer {
-            textureInputSemaphore.signal()
-        }
+        defer { textureInputSemaphore.signal() }
 
         inputTextures[fromSourceIndex] = texture
 
         if (UInt(inputTextures.count) >= maximumInputs) || activatePassthroughOnNextFrame {
-            let outputWidth: Int
-            let outputHeight: Int
-
             let firstInputTexture = inputTextures[0]!
-            if firstInputTexture.orientation.rotationNeeded(for: .portrait).flipsDimensions() {
-                outputWidth = firstInputTexture.texture.height
-                outputHeight = firstInputTexture.texture.width
-            } else {
-                outputWidth = firstInputTexture.texture.width
-                outputHeight = firstInputTexture.texture.height
-            }
 
+//            let outputWidth: Int
+//            let outputHeight: Int
+ 
+//            if firstInputTexture.orientation.rotationNeeded(for: .portrait).flipsDimensions() {
+//                outputWidth = firstInputTexture.texture.height
+//                outputHeight = firstInputTexture.texture.width
+//            } else {
+//                outputWidth = firstInputTexture.texture.width
+//                outputHeight = firstInputTexture.texture.height
+//            }
+
+//            if uniformSettings.usesAspectRatio {
+//                let outputRotation = firstInputTexture.orientation.rotationNeeded(for: .portrait)
+//                uniformSettings["aspectRatio"] = firstInputTexture.aspectRatio(for: outputRotation)
+//            }
+
+            let outputWidth = firstInputTexture.texture.width
+            let outputHeight = firstInputTexture.texture.height
+            let outputOrientation:ImageOrientation = outputWidth > outputHeight ? .landscapeRight : .portrait
+            
             if uniformSettings.usesAspectRatio {
-                let outputRotation = firstInputTexture.orientation.rotationNeeded(for: .portrait)
+                let outputRotation = firstInputTexture.orientation.rotationNeeded(for: outputOrientation)
                 uniformSettings["aspectRatio"] = firstInputTexture.aspectRatio(for: outputRotation)
             }
 
@@ -87,7 +95,7 @@ open class BasicOperation: ImageProcessingOperation {
             else { return }
 
             let outputTexture = Texture(
-                device: sharedMetalRenderingDevice.device, orientation: .portrait,
+                device: sharedMetalRenderingDevice.device, orientation: outputOrientation,
                 width: outputWidth, height: outputHeight, timingStyle: firstInputTexture.timingStyle
             )
 

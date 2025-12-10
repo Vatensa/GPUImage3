@@ -45,10 +45,12 @@ public class RenderView: MTKView, ImageConsumer {
         if let currentDrawable = self.currentDrawable, let imageTexture = currentTexture {
             let commandBuffer = sharedMetalRenderingDevice.commandQueue.makeCommandBuffer()
 
-            let outputTexture = Texture(orientation: .portrait, texture: currentDrawable.texture)
+            let outputTexture = Texture(orientation: imageTexture.orientation, texture: currentDrawable.texture)
             commandBuffer?.renderQuad(
                 pipelineState: renderPipelineState, inputTextures: [0: imageTexture],
-                outputTexture: outputTexture)
+                outputTexture: outputTexture,
+                outputOrientation: outputTexture.orientation
+            )
 
             commandBuffer?.present(currentDrawable)
             commandBuffer?.commit()
