@@ -63,6 +63,8 @@ open class BasicOperation: ImageProcessingOperation {
 
         inputTextures[fromSourceIndex] = texture
 
+        //print("[\(String(describing: type(of: self)))] input: \(texture.orientation)")
+        
         if (UInt(inputTextures.count) >= maximumInputs) || activatePassthroughOnNextFrame {
             let firstInputTexture = inputTextures[0]!
 
@@ -84,7 +86,8 @@ open class BasicOperation: ImageProcessingOperation {
 
             let outputWidth = firstInputTexture.texture.width
             let outputHeight = firstInputTexture.texture.height
-            let outputOrientation:ImageOrientation = outputWidth > outputHeight ? .landscapeRight : .portrait
+            //let outputOrientation:ImageOrientation = outputWidth > outputHeight ? .landscapeRight : .portrait
+            let outputOrientation:ImageOrientation = firstInputTexture.orientation
             
             if uniformSettings.usesAspectRatio {
                 let outputRotation = firstInputTexture.orientation.rotationNeeded(for: outputOrientation)
@@ -143,6 +146,9 @@ open class BasicOperation: ImageProcessingOperation {
 
             removeTransientInputs()
             textureInputSemaphore.signal()
+            
+            //print("[\(String(describing: type(of: self)))] output: \(outputTexture.orientation)")
+            
             updateTargetsWithTexture(outputTexture)
             let _ = textureInputSemaphore.wait(timeout: DispatchTime.distantFuture)
         }
@@ -161,6 +167,6 @@ open class BasicOperation: ImageProcessingOperation {
             pipelineState: renderPipelineState, uniformSettings: uniformSettings,
             inputTextures: inputTextures,
             useNormalizedTextureCoordinates: useNormalizedTextureCoordinates,
-            outputTexture: outputTexture)
+            outputTexture: outputTexture, outputOrientation: outputTexture.orientation)
     }
 }

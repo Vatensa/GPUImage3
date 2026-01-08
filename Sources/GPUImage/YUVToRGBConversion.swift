@@ -45,6 +45,6 @@ public func convertYUVToRGB(
     commandBuffer.renderQuad(
         pipelineState: pipelineState, uniformSettings: uniformSettings,
         inputTextures: inputTextures, useNormalizedTextureCoordinates: true,
-        outputTexture: resultTexture)
+        outputTexture: resultTexture, outputOrientation: resultTexture.orientation)
     commandBuffer.commit()
 }
