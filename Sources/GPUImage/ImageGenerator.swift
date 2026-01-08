@@ -15,7 +15,7 @@ public class ImageGenerator: ImageSource {
         target.newTextureAvailable(internalTexture, fromSourceIndex: atIndex)
     }
 
-    func notifyTargets() {
+    public func notifyTargets() {
         updateTargetsWithTexture(internalTexture)
     }
 }
