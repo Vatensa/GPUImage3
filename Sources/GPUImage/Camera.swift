@@ -301,6 +301,9 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
                             width: outputWidth, height: outputHeight,
                             timingStyle: .videoFrame(timestamp: Timestamp(currentTime)))
                     }
+                    else if self.conversionTexture?.orientation != orientation {
+                        self.conversionTexture?.orientation = orientation
+                    }
                     
                     self.conversionTexture?.timingStyle = .videoFrame(timestamp: Timestamp(currentTime))
                     
@@ -366,7 +369,6 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     }
 
     public func startCapture() {
-
         let _ = frameRenderingSemaphore.wait(timeout: DispatchTime.distantFuture)
         self.numberOfFramesCaptured = 0
         self.totalFrameTimeDuringCapture = 0
