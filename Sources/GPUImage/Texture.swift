@@ -161,6 +161,29 @@ extension Texture {
     }
 }
 
+extension Texture {
+    public func clone() -> Texture {
+        // Flip and swizzle image
+        guard let commandBuffer = sharedMetalRenderingDevice.commandQueue.makeCommandBuffer() else {
+            fatalError("Could not create command buffer on image rendering.")
+        }
+        let outputTexture = Texture(
+            device: sharedMetalRenderingDevice.device, orientation: self.orientation,
+            width: self.texture.width, height: self.texture.height,
+            mipmapped: false,
+            timingStyle: self.timingStyle)
+
+        commandBuffer.renderQuad(
+            pipelineState: sharedMetalRenderingDevice.passthroughRenderState, uniformSettings: nil,
+            inputTextures: [0: self], useNormalizedTextureCoordinates: true,
+            outputTexture: outputTexture)
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        return outputTexture
+    }
+}
+
 func dataProviderReleaseCallback(
     _ context: UnsafeMutableRawPointer?, data: UnsafeRawPointer, size: Int
 ) {
