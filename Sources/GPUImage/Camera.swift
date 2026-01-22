@@ -60,8 +60,8 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     public let captureSession: AVCaptureSession
     public var orientation: ImageOrientation?
     public let inputCamera: AVCaptureDevice!
-    let videoInput: AVCaptureDeviceInput!
-    let videoOutput: AVCaptureVideoDataOutput!
+    public let videoInput: AVCaptureDeviceInput!
+    public let videoOutput: AVCaptureVideoDataOutput!
     var videoTextureCache: CVMetalTextureCache?
 
     var microphone:AVCaptureDevice?
