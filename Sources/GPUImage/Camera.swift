@@ -45,6 +45,27 @@ public struct CameraError: Error {
 
 let initialBenchmarkFramesToIgnore = 5
 
+public extension Camera {
+    public var verticalFOV:Double {
+        let format = inputCamera.activeFormat
+        let fovX = Float(format.videoFieldOfView) * .pi / 180 // radians
+        let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+        
+        let width = Float(dimensions.width)
+        let height = Float(dimensions.height)
+
+        let aspect = height / width
+        let fovY = 2 * atan(aspect * tan(fovX / 2))
+        
+        return Double(orientation == .portrait || orientation == .portraitUpsideDown ? fovX : fovY)
+        //return FOV(horizontal: fovX, vertical: fovY)
+    }
+
+    public var fps:(min: Double, max: Double) {
+        return (min: 1.0 / inputCamera.activeVideoMinFrameDuration.seconds, max: 1.0 / inputCamera.activeVideoMaxFrameDuration.seconds)
+    }
+}
+
 public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
 
     public var location: PhysicalCameraLocation {
