@@ -47,6 +47,7 @@ let initialBenchmarkFramesToIgnore = 5
 
 public extension Camera {
     public var verticalFOV:Double {
+        #if os(iOS)
         let format = inputCamera.activeFormat
         let fovX = Float(format.videoFieldOfView) * .pi / 180 // radians
         let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
@@ -58,6 +59,9 @@ public extension Camera {
         let fovY = 2 * atan(aspect * tan(fovX / 2))
         
         return Double(orientation == .portrait || orientation == .portraitUpsideDown ? fovX : fovY)
+        #else
+        return .nan
+        #endif
         //return FOV(horizontal: fovX, vertical: fovY)
     }
 
