@@ -1,3 +1,5 @@
+import Foundation
+
 open class TextureSamplingOperation: BasicOperation {
     // public var overriddenTexelSize:Size?
 
@@ -5,7 +7,9 @@ open class TextureSamplingOperation: BasicOperation {
         vertexFunctionName: String? = "nearbyTexelSampling",
         fragmentFunctionName: String,
         numberOfInputs: UInt = 1,
-        operationName: String = #file
+        operationName: String = #file,
+        maximumTextureSize:CGSize = .zero,
+        textureResizePolicy:TextureResizePolicy = .fill
     ) {
         super.init(
             vertexFunctionName: vertexFunctionName, fragmentFunctionName: fragmentFunctionName,

@@ -13,7 +13,43 @@ public func defaultVertexFunctionNameForInputs(_ inputCount: UInt) -> String {
 }
 
 open class BasicOperation: ImageProcessingOperation {
+    public enum TextureResizePolicy {
+        case aspectFill
+        case aspectFit
+        case fill
 
+        public func resize(sourceSize: CGSize, destinationSize: CGSize) -> CGSize {
+            guard sourceSize.width > 0,
+                  sourceSize.height > 0,
+                  destinationSize.width > 0,
+                  destinationSize.height > 0 else {
+                return .zero
+            }
+
+            let sx = destinationSize.width / sourceSize.width
+            let sy = destinationSize.height / sourceSize.height
+
+            switch self {
+            case .fill:
+                return destinationSize
+
+            case .aspectFit:
+                let scale = min(sx, sy)
+                return CGSize(
+                    width: sourceSize.width * scale,
+                    height: sourceSize.height * scale
+                )
+
+            case .aspectFill:
+                let scale = max(sx, sy)
+                return CGSize(
+                    width: sourceSize.width * scale,
+                    height: sourceSize.height * scale
+                )
+            }
+        }
+    }
+    
     public let maximumInputs: UInt
     public let targets = TargetContainer()
     public let sources = SourceContainer()
@@ -35,22 +71,28 @@ open class BasicOperation: ImageProcessingOperation {
     let textureInputSemaphore = DispatchSemaphore(value: 1)
     var useNormalizedTextureCoordinates = true
     var metalPerformanceShaderPathway: ((MTLCommandBuffer, [UInt: Texture], Texture) -> Void)?
+    
+    public private(set) var maximumTextureSize:CGSize
+    public private(set) var textureResizePolicy:TextureResizePolicy
 
     public init(
         vertexFunctionName: String? = nil, fragmentFunctionName: String, numberOfInputs: UInt = 1,
-        operationName: String = #file
+        operationName: String = #file, maximumTextureSize:CGSize = .zero, textureResizePolicy:TextureResizePolicy = .fill
     ) {
         self.maximumInputs = numberOfInputs
         self.operationName = operationName
 
         let concreteVertexFunctionName =
             vertexFunctionName ?? defaultVertexFunctionNameForInputs(numberOfInputs)
+        
         let (pipelineState, lookupTable, bufferSize) = generateRenderPipelineState(
             device: sharedMetalRenderingDevice, vertexFunctionName: concreteVertexFunctionName,
             fragmentFunctionName: fragmentFunctionName, operationName: operationName)
+        
         self.renderPipelineState = pipelineState
-        self.uniformSettings = ShaderUniformSettings(
-            uniformLookupTable: lookupTable, bufferSize: bufferSize)
+        self.uniformSettings = ShaderUniformSettings(uniformLookupTable: lookupTable, bufferSize: bufferSize)
+        self.maximumTextureSize = maximumTextureSize
+        self.textureResizePolicy = textureResizePolicy
     }
 
     public func transmitPreviousImage(to target: ImageConsumer, atIndex: UInt) {
@@ -84,11 +126,20 @@ open class BasicOperation: ImageProcessingOperation {
 //                uniformSettings["aspectRatio"] = firstInputTexture.aspectRatio(for: outputRotation)
 //            }
 
-            let outputWidth = firstInputTexture.texture.width
-            let outputHeight = firstInputTexture.texture.height
+            var outputWidth = firstInputTexture.texture.width
+            var outputHeight = firstInputTexture.texture.height
             //let outputOrientation:ImageOrientation = outputWidth > outputHeight ? .landscapeRight : .portrait
             let outputOrientation:ImageOrientation = firstInputTexture.orientation
             
+            if maximumTextureSize.width.isFinite && maximumTextureSize.width > 0
+            && maximumTextureSize.height.isFinite && maximumTextureSize.height > 0 {
+                let newOutputSize = textureResizePolicy.resize(sourceSize: CGSize(width: outputWidth, height: outputHeight),
+                                                               destinationSize: maximumTextureSize)
+                
+                outputWidth = Int(ceil(newOutputSize.width))
+                outputHeight = Int(ceil(newOutputSize.height))
+            }
+
             if uniformSettings.usesAspectRatio {
                 let outputRotation = firstInputTexture.orientation.rotationNeeded(for: outputOrientation)
                 uniformSettings["aspectRatio"] = firstInputTexture.aspectRatio(for: outputRotation)
