@@ -169,14 +169,14 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
 
         if (Int(round(self.size.width)) != outputTexture?.texture.width) && (Int(round(self.size.height)) != outputTexture?.texture.height) {
             outputTexture = Texture(device:sharedMetalRenderingDevice.device,
-                                    orientation: .portrait,
+                                    orientation: texture.orientation,
                                     width: Int(round(self.size.width)),
                                     height: Int(round(self.size.height)),
                                     timingStyle: texture.timingStyle)
         }
         
         let commandBuffer = sharedMetalRenderingDevice.commandQueue.makeCommandBuffer()
-        commandBuffer?.renderQuad(pipelineState: renderPipelineState, inputTextures: [0:texture], outputTexture: outputTexture!)
+        commandBuffer?.renderQuad(pipelineState: renderPipelineState, inputTextures: [0:texture], outputTexture: outputTexture!, outputOrientation: texture.orientation)
         commandBuffer?.commit()
         commandBuffer?.waitUntilCompleted()
         
