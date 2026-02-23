@@ -43,6 +43,80 @@ public enum PhysicalCameraLocation {
 public struct CameraError: Error {
 }
 
+final class CMSampleBufferStorage {
+    enum MediaType {
+        case video
+        case audio
+    }
+
+    private var _capacity:Int
+    public var capacity: Int {
+        get { _capacity }
+        set {
+            guard newValue != capacity else { return }
+            
+            queue.sync {
+                videoSamples.removeAll()
+                audioSamples.removeAll()
+                hasReachedCapacity = false
+                
+                _capacity = newValue
+            }
+        }
+    }
+
+    private var videoSamples: [CMSampleBuffer] = []
+    private var audioSamples: [CMSampleBuffer] = []
+    private var hasReachedCapacity = false
+
+    private let queue = DispatchQueue(
+        label: "CMSampleBufferStorage.queue",
+        qos: .userInitiated
+    )
+
+    init(capacity: Int) {
+        self._capacity = capacity
+    }
+
+    func push(_ buffer: CMSampleBuffer?, type: MediaType) -> CMSampleBuffer? {
+        return queue.sync {
+            guard capacity > 0 else { return buffer }
+            guard let buffer else { return nil }
+
+            switch type {
+            case .video:
+                videoSamples.append(buffer)
+
+                if !hasReachedCapacity {
+                    if videoSamples.count >= capacity {
+                        hasReachedCapacity = true
+                    } else {
+                        return nil
+                    }
+                }
+
+                return videoSamples.isEmpty ? nil : videoSamples.removeFirst()
+
+            case .audio:
+                audioSamples.append(buffer)
+
+                // While video is still buffering, audio buffers too.
+                guard hasReachedCapacity else { return nil }
+
+                return audioSamples.isEmpty ? nil : audioSamples.removeFirst()
+            }
+        }
+    }
+
+    func reset() {
+        queue.sync {
+            videoSamples.removeAll()
+            audioSamples.removeAll()
+            hasReachedCapacity = false
+        }
+    }
+}
+
 let initialBenchmarkFramesToIgnore = 5
 
 public extension Camera {
@@ -88,7 +162,7 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     public let videoInput: AVCaptureDeviceInput!
     public let videoOutput: AVCaptureVideoDataOutput!
     var videoTextureCache: CVMetalTextureCache?
-
+    
     var microphone:AVCaptureDevice?
     var audioInput:AVCaptureDeviceInput?
     var audioOutput:AVCaptureAudioDataOutput?
@@ -138,6 +212,17 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     var framesSinceLastCheck = 0
     var lastCheckTime = CFAbsoluteTimeGetCurrent()
 
+    var sampleStorage = CMSampleBufferStorage(capacity: 0)
+    public var videoFrameDelay:Int {
+        set {
+            sampleStorage.capacity = newValue
+        }
+        
+        get {
+            return sampleStorage.capacity
+        }
+    }
+    
     public init(
         sessionPreset: AVCaptureSession.Preset, cameraDevice: AVCaptureDevice? = nil,
         location: PhysicalCameraLocation = .backFacing, orientation: ImageOrientation? = nil,
@@ -256,6 +341,8 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
         _ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
+        guard let sampleBuffer = sampleStorage.push(sampleBuffer, type: output != audioOutput ? .video : .audio) else { return }
+        
         guard (output != audioOutput) else {
             self.processAudioSampleBuffer(sampleBuffer)
             return
