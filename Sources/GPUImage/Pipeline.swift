@@ -136,7 +136,7 @@ public class TargetContainer: Sequence {
 }
 
 public class SourceContainer {
-    var sources: [UInt: ImageSource] = [:]
+    public private(set) var sources: [UInt: ImageSource] = [:]
 
     public init() {
     }

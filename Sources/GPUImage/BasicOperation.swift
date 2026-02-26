@@ -95,11 +95,11 @@ open class BasicOperation: ImageProcessingOperation {
         self.textureResizePolicy = textureResizePolicy
     }
 
-    public func transmitPreviousImage(to target: ImageConsumer, atIndex: UInt) {
+    open func transmitPreviousImage(to target: ImageConsumer, atIndex: UInt) {
         // TODO: Finish implementation later
     }
 
-    public func newTextureAvailable(_ texture: Texture, fromSourceIndex: UInt) {
+    open func newTextureAvailable(_ texture: Texture, fromSourceIndex: UInt) {
         let _ = textureInputSemaphore.wait(timeout: DispatchTime.distantFuture)
         defer { textureInputSemaphore.signal() }
 
