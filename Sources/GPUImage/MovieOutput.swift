@@ -35,6 +35,10 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
         }
     }
     
+    public var readyForNextFrame: Bool {
+        return assetWriterVideoInput.expectsMediaDataInRealTime || assetWriterVideoInput.isReadyForMoreMediaData
+    }
+    
     private var outputTexture: Texture? = nil
 
     public init(
