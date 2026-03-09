@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreLocation
 
 public protocol AudioEncodingTarget {
     func activateAudioTrack()
@@ -35,8 +36,12 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
         }
     }
     
-    public var readyForNextFrame: Bool {
+    public var readyForNextVideoFrame: Bool {
         return assetWriterVideoInput.expectsMediaDataInRealTime || assetWriterVideoInput.isReadyForMoreMediaData
+    }
+    
+    public var readyForNextAudioFrame: Bool {
+        return (assetWriterAudioInput?.expectsMediaDataInRealTime ?? true) || (assetWriterAudioInput?.isReadyForMoreMediaData ?? true)
     }
     
     private var outputTexture: Texture? = nil
@@ -212,5 +217,31 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
         if !assetWriterAudioInput.append(sampleBuffer) {
             print("Trouble appending audio sample buffer")
         }
+    }
+}
+
+// MARK: Adding GPS location to video's metadata
+
+public extension MovieOutput {
+    private func iso6709String(_ loc: CLLocation) -> String {
+        let c = loc.coordinate
+        let lat = String(format: "%+.6f", c.latitude)
+        let lon = String(format: "%+.6f", c.longitude)
+
+        if loc.verticalAccuracy >= 0 {
+            let alt = String(format: "%+.2f", loc.altitude)
+            return "\(lat)\(lon)\(alt)/"
+        } else {
+            return "\(lat)\(lon)/"
+        }
+    }
+
+    public func setLocationMetadata(_ location: CLLocation) {
+        let item = AVMutableMetadataItem()
+        item.identifier = .quickTimeMetadataLocationISO6709
+        item.value = iso6709String(location) as NSString
+        item.dataType = kCMMetadataBaseDataType_UTF8 as String
+
+        assetWriter.metadata = (assetWriter.metadata) + [item]
     }
 }
