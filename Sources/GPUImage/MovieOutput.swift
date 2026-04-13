@@ -224,13 +224,6 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
 
 public extension MovieOutput {
     func iso6709String(_ location: CLLocation) -> String {
-//        String(
-//            format: "%+08.4f%+09.4f/",
-//            locale: Locale(identifier: "en_US_POSIX"),
-//            location.coordinate.latitude,
-//            location.coordinate.longitude
-//        )
-        
         String(format: "%+08.4f%+09.4f/", location.coordinate.latitude, location.coordinate.longitude)
     }
 
