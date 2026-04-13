@@ -223,25 +223,26 @@ public class MovieOutput: ImageConsumer, AudioEncodingTarget {
 // MARK: Adding GPS location to video's metadata
 
 public extension MovieOutput {
-    private func iso6709String(_ loc: CLLocation) -> String {
-        let c = loc.coordinate
-        let lat = String(format: "%+.6f", c.latitude)
-        let lon = String(format: "%+.6f", c.longitude)
-
-        if loc.verticalAccuracy >= 0 {
-            let alt = String(format: "%+.2f", loc.altitude)
-            return "\(lat)\(lon)\(alt)/"
-        } else {
-            return "\(lat)\(lon)/"
-        }
+    func iso6709String(_ location: CLLocation) -> String {
+//        String(
+//            format: "%+08.4f%+09.4f/",
+//            locale: Locale(identifier: "en_US_POSIX"),
+//            location.coordinate.latitude,
+//            location.coordinate.longitude
+//        )
+        
+        String(format: "%+08.4f%+09.4f/", location.coordinate.latitude, location.coordinate.longitude)
     }
 
     public func setLocationMetadata(_ location: CLLocation) {
         let item = AVMutableMetadataItem()
-        item.identifier = .quickTimeMetadataLocationISO6709
+        item.keySpace = .quickTimeMetadata
+        item.key = AVMetadataKey.quickTimeMetadataKeyLocationISO6709 as NSString
         item.value = iso6709String(location) as NSString
         item.dataType = kCMMetadataBaseDataType_UTF8 as String
 
-        assetWriter.metadata = (assetWriter.metadata) + [item]
+        assetWriter.metadata = (assetWriter.metadata ?? []) + [item]
+        
+        print("location set to: \(item.value)")
     }
 }
