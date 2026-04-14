@@ -71,7 +71,7 @@ final class CMSampleBufferStorage {
 
     private let queue = DispatchQueue(
         label: "CMSampleBufferStorage.queue",
-        qos: .userInitiated
+        qos: .userInteractive
     )
 
     init(capacity: Int) {
