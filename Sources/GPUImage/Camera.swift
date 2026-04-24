@@ -169,10 +169,16 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     
     public var audioEncodingTarget:AudioEncodingTarget? {
         didSet {
+            self.removeAudioInputsAndOutputs()
+
             guard let audioEncodingTarget = audioEncodingTarget else {
-                self.removeAudioInputsAndOutputs()
                 return
             }
+
+            if let inputCamera {
+                try? selectMicMatchingCameraPosition(inputCamera.position)
+            }
+            
             do {
                 try self.addAudioInputsAndOutputs()
                 audioEncodingTarget.activateAudioTrack()
@@ -507,40 +513,79 @@ public class Camera: NSObject, ImageSource, AVCaptureVideoDataOutputSampleBuffer
     // MARK: -
     // MARK: Audio processing
     
-    func addAudioInputsAndOutputs() throws {
-        guard (self.audioOutput == nil) else { return }
-        
-        captureSession.beginConfiguration()
-        defer {
-            captureSession.commitConfiguration()
+    func selectMicMatchingCameraPosition(_ cameraPosition: AVCaptureDevice.Position) throws {
+        #if os(iOS)
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [])
+        try audioSession.setActive(true)
+
+        guard let builtInMic = audioSession.availableInputs?.first(where: {
+            $0.portType == .builtInMic
+        }) else {
+            return
         }
+
+        let wantedOrientation: AVAudioSession.Orientation?
+        switch cameraPosition {
+        case .front:
+            wantedOrientation = .front
+        case .back:
+            wantedOrientation = .back
+        default:
+            wantedOrientation = nil
+        }
+
+        if let wantedOrientation,
+           let dataSource = builtInMic.dataSources?.first(where: { $0.orientation == wantedOrientation }) {
+            try builtInMic.setPreferredDataSource(dataSource)
+        }
+
+        try audioSession.setPreferredInput(builtInMic)
+        #endif
+    }
+
+    func addAudioInputsAndOutputs() throws {
+        guard audioOutput == nil else { return }
+
+        captureSession.beginConfiguration()
+        defer { captureSession.commitConfiguration() }
+
         guard let microphone = AVCaptureDevice.default(for: .audio) else {
             return
         }
-        let audioInput = try AVCaptureDeviceInput(device:microphone)
+
+        let audioInput = try AVCaptureDeviceInput(device: microphone)
         if captureSession.canAddInput(audioInput) {
-           captureSession.addInput(audioInput)
+            captureSession.addInput(audioInput)
+            self.audioInput = audioInput
+            self.microphone = microphone
         }
+
         let audioOutput = AVCaptureAudioDataOutput()
         if captureSession.canAddOutput(audioOutput) {
             captureSession.addOutput(audioOutput)
+            audioOutput.setSampleBufferDelegate(self, queue: audioProcessingQueue)
+            self.audioOutput = audioOutput
         }
-        self.microphone = microphone
-        self.audioInput = audioInput
-        self.audioOutput = audioOutput
-        audioOutput.setSampleBufferDelegate(self, queue:audioProcessingQueue)
     }
-    
+
     func removeAudioInputsAndOutputs() {
-        guard (audioOutput != nil) else { return }
-        
+        guard audioOutput != nil || audioInput != nil else { return }
+
         captureSession.beginConfiguration()
-        captureSession.removeInput(audioInput!)
-        captureSession.removeOutput(audioOutput!)
-        audioInput = nil
-        audioOutput = nil
+        defer { captureSession.commitConfiguration() }
+
+        if let audioInput {
+            captureSession.removeInput(audioInput)
+            self.audioInput = nil
+        }
+
+        if let audioOutput {
+            captureSession.removeOutput(audioOutput)
+            self.audioOutput = nil
+        }
+
         microphone = nil
-        captureSession.commitConfiguration()
     }
     
     func processAudioSampleBuffer(_ sampleBuffer:CMSampleBuffer) {
