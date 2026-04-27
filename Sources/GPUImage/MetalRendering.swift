@@ -26,7 +26,7 @@ extension MTLCommandBuffer {
         renderEncoder.endEncoding()
     }
 
-    func renderQuad(
+    public func renderQuad(
         pipelineState: MTLRenderPipelineState, uniformSettings: ShaderUniformSettings? = nil,
         inputTextures: [UInt: Texture], useNormalizedTextureCoordinates: Bool = true,
         imageVertices: [Float] = standardImageVertices, outputTexture: Texture,
