@@ -236,6 +236,6 @@ public extension MovieOutput {
 
         assetWriter.metadata = (assetWriter.metadata ?? []) + [item]
         
-        print("location set to: \(item.value)")
+        //print("location set to: \(item.value)")
     }
 }
